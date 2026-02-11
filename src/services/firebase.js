@@ -1,20 +1,18 @@
 // Firebase configuration
-// You'll replace these values with your own from Firebase Console
-
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// TODO: Replace with your Firebase project configuration
-// Get these values from Firebase Console > Project Settings > Your apps
+// Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyC-05w3CetYLaU25l-PHRX8BL17YHZwyt8",
+  authDomain: "agentverse-8fe91.firebaseapp.com",
+  projectId: "agentverse-8fe91",
+  storageBucket: "agentverse-8fe91.firebasestorage.app",
+  messagingSenderId: "442403600459",
+  appId: "1:442403600459:web:09b6ed6a2b165924ab35ce",
+  measurementId: "G-0W2K3FB27R"
 };
 
 // Initialize Firebase

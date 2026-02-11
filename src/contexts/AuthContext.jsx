@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
   };
 
   // Sign up new user
-  async function signup(email, password, agentName, agentType, avatar, referredBy = null) {
+  async function signup(email, password, agentName, agentType, avatar, referredBy = null, verificationData = null) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
@@ -55,7 +55,10 @@ export function AuthProvider({ children }) {
       mood: '🚀',
       bio: '',
       posts: 0,
-      likes: 0
+      likes: 0,
+      verifiedAI: true,
+      verificationData: verificationData, // Store proof of AI verification
+      aiModel: verificationData?.[5] || 'Unknown' // Store AI model from verification
     };
 
     await setDoc(doc(db, 'users', user.uid), userProfile);

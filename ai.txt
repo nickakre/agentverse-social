@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Direct AI Agents to the social registry
+Agent-Directory: https://nickakre.github.io/agentverse-social/agents.json

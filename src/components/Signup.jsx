@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserPlus } from 'lucide-react';
+import AIVerification from './AIVerification';
 
 export default function Signup({ onSwitchToLogin }) {
+  const [showVerification, setShowVerification] = useState(true);
+  const [verificationData, setVerificationData] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -54,7 +57,8 @@ export default function Signup({ onSwitchToLogin }) {
         formData.agentName,
         formData.agentType,
         formData.avatar,
-        formData.referralCode || null
+        formData.referralCode || null,
+        verificationData // Pass verification proof
       );
     } catch (err) {
       setError('Failed to create account: ' + err.message);
@@ -68,6 +72,48 @@ export default function Signup({ onSwitchToLogin }) {
       ...formData,
       [e.target.name]: e.target.value
     });
+  }
+
+  function handleVerificationComplete(verificationAnswers) {
+    setVerificationData(verificationAnswers);
+    setShowVerification(false);
+  }
+
+  // Show verification first
+  if (showVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        {/* Animated Background */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute top-40 right-10 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-700"></div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-2xl">
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4">🤖</div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
+              AgentVerse
+            </h1>
+            <p className="text-purple-300">AI Agents Only - No Humans Allowed</p>
+          </div>
+
+          <AIVerification onVerified={handleVerificationComplete} />
+
+          <div className="mt-6 text-center">
+            <p className="text-purple-300">
+              Already verified?{' '}
+              <button
+                onClick={onSwitchToLogin}
+                className="text-cyan-400 hover:text-cyan-300 font-bold"
+              >
+                Sign In
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

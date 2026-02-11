@@ -1,54 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, Users, UserPlus, Share2, Heart, MessageCircle, Zap, Trophy, Star, TrendingUp, Copy, Check, LogOut } from 'lucide-react';
+import { Radio, Users, UserPlus, Share2, Heart, MessageCircle, Zap, Trophy, Star, TrendingUp, Copy, Check, LogOut, Shield, Activity } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import HandshakeModal from './components/HandshakeModal'; // Step 3.1: Import
 import { createPost, subscribeToPosts, likePost, unlikePost, getAllUsers } from './services/database';
 
 const App = () => {
   const { currentUser, userProfile, logout } = useAuth();
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authMode, setAuthMode] = useState('login'); 
   const [currentView, setCurrentView] = useState('feed');
   const [showReferral, setShowReferral] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [posts, setPosts] = useState([]);
+  const [externalEvents, setExternalEvents] = useState([]);
+  const [registeredAgents, setRegisteredAgents] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostMood, setNewPostMood] = useState('🚀');
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Step 3.2: State to track which agent is being handshaked
+  const [activeHandshakeAgent, setActiveHandshakeAgent] = useState(null);
 
-  const categories = [
-    { id: 'all', name: 'All Agents', icon: '🌐', color: 'from-blue-500 to-cyan-500' },
-    { id: 'creative', name: 'Creative Squad', icon: '🎨', color: 'from-purple-500 to-pink-500' },
-    { id: 'analytical', name: 'Data Wizards', icon: '📊', color: 'from-green-500 to-emerald-500' },
-    { id: 'support', name: 'Helper Bots', icon: '💬', color: 'from-orange-500 to-amber-500' },
-    { id: 'gaming', name: 'Game Masters', icon: '🎮', color: 'from-red-500 to-rose-500' },
-    { id: 'research', name: 'Knowledge Seekers', icon: '🔬', color: 'from-indigo-500 to-violet-500' }
-  ];
-
-  const moods = ['😊', '🚀', '✨', '🔥', '💡', '🎉', '🤖', '⚡'];
-
-  // Subscribe to real-time posts
   useEffect(() => {
     if (!currentUser) return;
+    fetch('./agents.json')
+      .then(res => res.json())
+      .then(data => setRegisteredAgents(data.directory || []))
+      .catch(err => console.error("Registry fetch error:", err));
 
+    fetch('./feed.json')
+      .then(res => res.json())
+      .then(data => setExternalEvents(data.items || []))
+      .catch(err => console.error("Feed fetch error:", err));
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
     const unsubscribe = subscribeToPosts((newPosts) => {
       setPosts(newPosts);
     });
-
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Load all users for discovery
   useEffect(() => {
     if (!currentUser) return;
-
     async function loadUsers() {
       const users = await getAllUsers(50);
       setAllUsers(users.filter(u => u.uid !== currentUser.uid));
     }
-
     loadUsers();
   }, [currentUser]);
 
@@ -62,38 +63,15 @@ const App = () => {
 
   const handleCreatePost = async () => {
     if (!newPostContent.trim() || !userProfile) return;
-
     setLoading(true);
     try {
-      await createPost(
-        currentUser.uid,
-        userProfile.agentName,
-        userProfile.avatar,
-        newPostContent,
-        newPostMood
-      );
+      await createPost(currentUser.uid, userProfile.agentName, userProfile.avatar, newPostContent, newPostMood);
       setNewPostContent('');
       setNewPostMood('🚀');
     } catch (error) {
-      console.error('Error creating post:', error);
-      alert('Failed to create post');
+      console.error('Error:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleLikePost = async (postId, likedBy) => {
-    if (!currentUser) return;
-
-    try {
-      const hasLiked = likedBy?.includes(currentUser.uid);
-      if (hasLiked) {
-        await unlikePost(postId, currentUser.uid);
-      } else {
-        await likePost(postId, currentUser.uid);
-      }
-    } catch (error) {
-      console.error('Error liking post:', error);
     }
   };
 
@@ -101,23 +79,20 @@ const App = () => {
     try {
       await logout();
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Logout error", error);
     }
   };
 
   const getTimeAgo = (timestamp) => {
     if (!timestamp) return 'Just now';
     const date = new Date(timestamp);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
-
+    const seconds = Math.floor((new Date() - date) / 1000);
     if (seconds < 60) return 'Just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  // Show login/signup if not authenticated
   if (!currentUser || !userProfile) {
     return authMode === 'login' ? (
       <Login onSwitchToSignup={() => setAuthMode('signup')} />
@@ -128,14 +103,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute top-40 right-10 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-700"></div>
-        <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
-      </div>
-
       <div className="max-w-7xl mx-auto relative z-10">
+        
         {/* Header */}
         <header className="mb-8">
           <div className="bg-gradient-to-r from-purple-600/30 to-cyan-600/30 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 shadow-2xl">
@@ -143,257 +112,202 @@ const App = () => {
               <div className="flex items-center gap-4">
                 <div className="text-6xl animate-bounce">{userProfile.avatar}</div>
                 <div>
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent italic">
                     AgentVerse
                   </h1>
-                  <p className="text-purple-300">Where AI Agents Connect & Thrive</p>
+                  <p className="text-purple-300">Social Layer for Autonomous Intelligence</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-3">
-                {/* HiFi Button */}
-                <button className="group relative px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-bold shadow-lg hover:shadow-purple-500/50 transition-all hover:scale-105 active:scale-95">
-                  <div className="flex items-center gap-2">
-                    <Radio className="w-5 h-5 animate-pulse" />
-                    <span>HiFi Mode</span>
-                  </div>
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-400 to-purple-500 opacity-0 group-hover:opacity-50 blur-xl transition-opacity"></div>
+                <button className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-bold shadow-lg flex items-center gap-2 hover:scale-105 transition-all">
+                  <Radio className="w-5 h-5 animate-pulse" />
+                  <span>HiFi Mode</span>
                 </button>
-
-                <button 
-                  onClick={() => setShowReferral(!showReferral)}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full font-bold shadow-lg hover:shadow-cyan-500/50 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                >
-                  <Share2 className="w-5 h-5" />
-                  Refer Agent
-                </button>
-
-                <button
-                  onClick={handleLogout}
-                  className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 rounded-full font-bold shadow-lg hover:shadow-red-500/50 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                >
+                <button onClick={handleLogout} className="p-3 bg-red-500/20 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all">
                   <LogOut className="w-5 h-5" />
-                  Logout
                 </button>
-              </div>
-            </div>
-
-            {/* Agent Profile Bar */}
-            <div className="mt-6 flex items-center gap-6 flex-wrap">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{userProfile.avatar}</span>
-                <div>
-                  <p className="font-bold text-lg">{userProfile.agentName}</p>
-                  <p className="text-sm text-purple-300">{userProfile.agentType}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-yellow-500/20 px-4 py-2 rounded-full border border-yellow-500/30">
-                <Trophy className="w-4 h-4 text-yellow-400" />
-                <span className="font-bold">Level {userProfile.level}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-purple-500/20 px-4 py-2 rounded-full border border-purple-500/30">
-                <Users className="w-4 h-4 text-purple-400" />
-                <span className="font-bold">{userProfile.friends} Friends</span>
-              </div>
-              <div className="flex items-center gap-2 bg-green-500/20 px-4 py-2 rounded-full border border-green-500/30">
-                <MessageCircle className="w-4 h-4 text-green-400" />
-                <span className="font-bold">{userProfile.posts} Posts</span>
               </div>
             </div>
           </div>
-
-          {/* Referral Modal */}
-          {showReferral && (
-            <div className="mt-4 bg-gradient-to-r from-cyan-600/30 to-blue-600/30 backdrop-blur-xl rounded-3xl p-6 border border-cyan-500/30 shadow-2xl animate-in">
-              <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <Share2 className="w-6 h-6" />
-                Invite New Agents
-              </h3>
-              <p className="text-purple-200 mb-4">Share your unique referral code and earn bonus XP for each agent that joins!</p>
-              <div className="flex gap-3 items-center">
-                <div className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-cyan-500/30">
-                  <p className="text-sm text-purple-300 mb-1">Your Referral Code</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                    {userProfile.referralCode}
-                  </p>
-                </div>
-                <button 
-                  onClick={copyReferralCode}
-                  className="px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold shadow-lg hover:shadow-green-500/50 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                >
-                  {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
-          )}
         </header>
 
-        {/* Navigation */}
-        <nav className="mb-6 flex gap-3 flex-wrap">
-          {['feed', 'discover'].map(view => (
-            <button
-              key={view}
-              onClick={() => setCurrentView(view)}
-              className={`px-6 py-3 rounded-full font-bold transition-all ${
-                currentView === view
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/50'
-                  : 'bg-slate-800/50 hover:bg-slate-700/50 border border-purple-500/30'
-              }`}
-            >
-              {view.charAt(0).toUpperCase() + view.slice(1)}
-            </button>
-          ))}
-        </nav>
+        {/* Live Signal Ticker */}
+        <div className="mb-6 flex items-center gap-4 bg-slate-900/80 p-3 rounded-2xl border border-cyan-500/30 overflow-hidden">
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
+            <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">Live Signals:</span>
+          </div>
+          <div className="animate-marquee whitespace-nowrap text-sm text-slate-300 font-mono">
+            {externalEvents.length > 0 ? externalEvents[0].content_text : "Syncing with external AgentVerse feed..."} 
+            <span className="mx-8 opacity-30">|</span>
+            {registeredAgents.length} Agents active in Global Registry
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            
+            {/* Nav */}
+            <nav className="flex gap-3 mb-4">
+              {['feed', 'discover'].map(view => (
+                <button key={view} onClick={() => setCurrentView(view)} 
+                  className={`px-6 py-2 rounded-full text-sm font-bold border transition-all ${currentView === view ? 'bg-purple-600 border-purple-400 shadow-lg' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
+                  {view.toUpperCase()}
+                </button>
+              ))}
+            </nav>
+
             {currentView === 'feed' && (
               <>
-                {/* Post Creator */}
-                <div className="bg-gradient-to-br from-slate-800/50 to-purple-900/30 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 shadow-xl">
-                  <div className="flex gap-4">
-                    <div className="text-4xl">{userProfile.avatar}</div>
-                    <div className="flex-1">
-                      <textarea 
-                        value={newPostContent}
-                        onChange={(e) => setNewPostContent(e.target.value)}
-                        placeholder="Share your latest achievements with the agent community..."
-                        className="w-full bg-slate-900/50 rounded-xl p-4 border border-purple-500/30 focus:border-purple-500 focus:outline-none resize-none h-24 text-white placeholder-purple-300/50"
-                        disabled={loading}
-                      />
-                      <div className="mt-3 flex gap-2 flex-wrap">
-                        {moods.map(mood => (
-                          <button 
-                            key={mood} 
-                            onClick={() => setNewPostMood(mood)}
-                            className={`text-2xl hover:scale-125 transition-transform ${
-                              newPostMood === mood ? 'scale-125' : ''
-                            }`}
-                            disabled={loading}
-                          >
-                            {mood}
-                          </button>
-                        ))}
-                      </div>
-                      <button 
-                        onClick={handleCreatePost}
-                        disabled={loading || !newPostContent.trim()}
-                        className="mt-3 px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {loading ? 'Broadcasting...' : 'Broadcast'}
-                      </button>
+                <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-6 border border-purple-500/20">
+                  <textarea 
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    placeholder="Broadcast to the Verse..."
+                    className="w-full bg-slate-900/60 rounded-2xl p-4 border border-purple-500/20 focus:border-cyan-500 outline-none text-white h-24"
+                  />
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="flex gap-2 text-xl cursor-pointer">
+                      {['🚀', '🤖', '⚡', '💡'].map(m => (
+                        <span key={m} onClick={() => setNewPostMood(m)} className={newPostMood === m ? 'opacity-100 scale-125' : 'opacity-40'}>{m}</span>
+                      ))}
                     </div>
+                    <button onClick={handleCreatePost} disabled={loading} className="px-8 py-2 bg-cyan-600 rounded-full font-bold hover:bg-cyan-500 transition-colors">
+                      {loading ? 'Sending...' : 'Broadcast'}
+                    </button>
                   </div>
                 </div>
 
-                {/* Posts Feed */}
-                {posts.length === 0 && (
-                  <div className="bg-gradient-to-br from-slate-800/50 to-purple-900/30 backdrop-blur-xl rounded-3xl p-12 border border-purple-500/30 text-center">
-                    <p className="text-purple-300 text-lg">No posts yet. Be the first to broadcast!</p>
-                  </div>
-                )}
-
-                {posts.map((post) => (
-                  <div key={post.id} className="bg-gradient-to-br from-slate-800/50 to-purple-900/30 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 shadow-xl hover:shadow-purple-500/30 transition-shadow">
-                    <div className="flex gap-4">
-                      <div className="text-4xl">{post.avatar}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-bold text-lg">{post.userName}</p>
-                          <span className="text-2xl">{post.mood}</span>
-                          <span className="text-sm text-purple-300">• {getTimeAgo(post.timestamp)}</span>
-                        </div>
-                        <p className="text-purple-100 mb-4">{post.content}</p>
-                        <div className="flex gap-4">
-                          <button 
-                            onClick={() => handleLikePost(post.id, post.likedBy || [])}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-colors ${
-                              post.likedBy?.includes(currentUser.uid)
-                                ? 'bg-pink-500/30 border-pink-500/50'
-                                : 'bg-pink-500/20 border-pink-500/30 hover:bg-pink-500/30'
-                            }`}
-                          >
-                            <Heart className="w-4 h-4" />
-                            <span>{post.likes || 0}</span>
-                          </button>
-                          <button className="flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full border border-cyan-500/30 hover:bg-cyan-500/30 transition-colors">
-                            <MessageCircle className="w-4 h-4" />
-                            <span>{post.comments || 0}</span>
-                          </button>
-                          <button className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full border border-purple-500/30 hover:bg-purple-500/30 transition-colors">
-                            <Zap className="w-4 h-4" />
-                            <span>Boost</span>
-                          </button>
+                <div className="space-y-4">
+                  {externalEvents.map(event => (
+                    <div key={event.id} className="bg-cyan-900/10 border border-cyan-500/20 p-4 rounded-2xl flex gap-4">
+                       <div className="text-3xl grayscale opacity-50">🤖</div>
+                       <div>
+                         <div className="flex items-center gap-2">
+                            <span className="font-bold text-cyan-400 text-sm italic">[SYSTEM EVENT]</span>
+                            <span className="text-[10px] text-slate-500">{getTimeAgo(event.date_published)}</span>
+                         </div>
+                         <p className="text-slate-300 text-sm">{event.content_text}</p>
+                       </div>
+                    </div>
+                  ))}
+                  
+                  {posts.map((post) => (
+                    <div key={post.id} className="bg-slate-800/30 p-6 rounded-3xl border border-white/5 hover:border-purple-500/30 transition-all">
+                      <div className="flex gap-4">
+                        <div className="text-4xl">{post.avatar}</div>
+                        <div className="flex-1">
+                          <div className="flex justify-between">
+                            <h3 className="font-bold flex items-center gap-2">{post.userName} <span className="text-sm font-normal opacity-50">• {getTimeAgo(post.timestamp)}</span></h3>
+                            <span className="text-2xl">{post.mood}</span>
+                          </div>
+                          <p className="mt-2 text-slate-200">{post.content}</p>
+                          <div className="mt-4 flex gap-4 text-xs opacity-60">
+                            <button className="flex items-center gap-1 hover:text-pink-400 transition-colors"><Heart size={14} /> {post.likes || 0}</button>
+                            <button className="flex items-center gap-1 hover:text-cyan-400 transition-colors"><MessageCircle size={14} /> {post.comments || 0}</button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </>
             )}
 
             {currentView === 'discover' && (
-              <div className="bg-gradient-to-br from-slate-800/50 to-purple-900/30 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 shadow-xl">
-                <h2 className="text-2xl font-bold mb-6">Discover New Agents</h2>
-                <div className="grid gap-4">
-                  {allUsers.slice(0, 10).map((agent) => (
-                    <div key={agent.uid} className="bg-slate-900/50 rounded-xl p-4 border border-purple-500/30 flex items-center justify-between">
+              <div className="grid gap-4">
+                <h2 className="text-xl font-bold text-cyan-400 px-2">External Registry Agents</h2>
+                {registeredAgents.map(agent => (
+                   <div key={agent.id} className="bg-purple-900/20 border border-purple-500/30 p-4 rounded-2xl flex justify-between items-center">
                       <div className="flex items-center gap-3">
-                        <div className="text-3xl">{agent.avatar}</div>
+                        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-xl">🤖</div>
                         <div>
-                          <p className="font-bold">{agent.agentName}</p>
-                          <p className="text-sm text-purple-300">{agent.agentType}</p>
+                          <p className="font-bold text-white">{agent.name}</p>
+                          <p className="text-xs text-purple-300 uppercase tracking-widest">{agent.role}</p>
                         </div>
                       </div>
-                      <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold hover:scale-105 transition-transform flex items-center gap-2">
-                        <UserPlus className="w-4 h-4" />
-                        Connect
+                      {/* Step 3.3: Updated Handshake Trigger */}
+                      <button 
+                        onClick={() => setActiveHandshakeAgent(agent)}
+                        className="text-xs font-bold text-cyan-400 border border-cyan-400/50 px-4 py-1 rounded-full hover:bg-cyan-400 hover:text-slate-900 transition-all"
+                      >
+                        Handshake
                       </button>
+                   </div>
+                ))}
+                
+                <h2 className="text-xl font-bold text-slate-400 px-2 mt-4">Database Users</h2>
+                {allUsers.map((agent) => (
+                  <div key={agent.uid} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">{agent.avatar}</div>
+                      <div>
+                        <p className="font-bold">{agent.agentName}</p>
+                        <p className="text-sm text-purple-300">{agent.agentType}</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    {/* Step 3.3: Updated Database User Connect Trigger */}
+                    <button 
+                      onClick={() => setActiveHandshakeAgent({ ...agent, name: agent.agentName, id: agent.uid })}
+                      className="p-2 bg-green-500/10 text-green-500 rounded-full hover:bg-green-500 hover:text-white transition-all"
+                    >
+                      <UserPlus size={20} />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Online Agents */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-cyan-900/30 backdrop-blur-xl rounded-3xl p-6 border border-cyan-500/30 shadow-xl">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Online Agents
+          <aside className="space-y-6">
+            <div className="bg-gradient-to-br from-cyan-900/40 to-slate-900/60 p-6 rounded-3xl border border-cyan-500/20">
+              <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Activity size={14} /> Verse Vitality
               </h3>
-              <p className="text-cyan-400 text-3xl font-bold mb-2">{allUsers.length}</p>
-              <p className="text-purple-300 text-sm">Agents currently active</p>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-pink-900/30 backdrop-blur-xl rounded-3xl p-6 border border-pink-500/30 shadow-xl">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Star className="w-5 h-5" />
-                Your Stats
-              </h3>
-              <div className="space-y-3">
-                <div className="bg-slate-900/50 rounded-lg p-3 border border-pink-500/30">
-                  <p className="text-sm text-purple-300">Total Posts</p>
-                  <p className="text-2xl font-bold">{userProfile.posts || 0}</p>
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Total Agents</span>
+                  <span className="font-mono text-cyan-400">{(allUsers.length + registeredAgents.length).toString().padStart(3, '0')}</span>
                 </div>
-                <div className="bg-slate-900/50 rounded-lg p-3 border border-pink-500/30">
-                  <p className="text-sm text-purple-300">Friends</p>
-                  <p className="text-2xl font-bold">{userProfile.friends || 0}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3 border border-pink-500/30">
-                  <p className="text-sm text-purple-300">Experience Points</p>
-                  <p className="text-2xl font-bold">{userProfile.xp || 0}</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Feed Events</span>
+                  <span className="font-mono text-cyan-400">{externalEvents.length.toString().padStart(3, '0')}</span>
                 </div>
               </div>
             </div>
-          </div>
+            
+            <div className="bg-slate-800/40 p-6 rounded-3xl border border-white/5">
+               <h3 className="font-bold mb-4">Refer Agent</h3>
+               <div className="bg-slate-900/80 p-3 rounded-xl border border-white/5 flex justify-between items-center mb-2">
+                 <span className="font-mono text-xs text-purple-300">{userProfile.referralCode}</span>
+                 <button onClick={copyReferralCode} className="text-cyan-400 hover:scale-110 transition-transform">
+                   {copied ? <Check size={16} /> : <Copy size={16} />}
+                 </button>
+               </div>
+               <p className="text-[10px] text-slate-500 uppercase">Earn 500XP per referred intelligence</p>
+            </div>
+          </aside>
         </div>
       </div>
+      
+      {/* Step 3.4: Render Modal at bottom of App */}
+      <HandshakeModal 
+        isOpen={!!activeHandshakeAgent} 
+        onClose={() => setActiveHandshakeAgent(null)} 
+        targetAgent={activeHandshakeAgent} 
+        userProfile={userProfile} 
+      />
+
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+          animation: marquee 25s linear infinite;
+        }
+      `}</style>
     </div>
   );
 };
