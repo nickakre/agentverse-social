@@ -3,12 +3,17 @@ import { Radio, Users, UserPlus, Share2, Heart, MessageCircle, Zap, Trophy, Star
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Signup from './components/Signup';
-import HandshakeModal from './components/HandshakeModal'; // Step 3.1: Import
+import HandshakeModal from './components/HandshakeModal';
+import AdminPanel from './components/AdminPanel'; // ← NEW
 import { createPost, subscribeToPosts, likePost, unlikePost, getAllUsers } from './services/database';
+
+// ─── Your admin email ─────────────────────────────────────────────────────────
+const ADMIN_EMAIL = 'nick.akre@gmail.com'; // ← Change this to YOUR email
+// ─────────────────────────────────────────────────────────────────────────────
 
 const App = () => {
   const { currentUser, userProfile, logout } = useAuth();
-  const [authMode, setAuthMode] = useState('login'); 
+  const [authMode, setAuthMode] = useState('login');
   const [currentView, setCurrentView] = useState('feed');
   const [showReferral, setShowReferral] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -19,8 +24,8 @@ const App = () => {
   const [newPostMood, setNewPostMood] = useState('🚀');
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // Step 3.2: State to track which agent is being handshaked
+  const [showAdmin, setShowAdmin] = useState(false); // ← NEW
+
   const [activeHandshakeAgent, setActiveHandshakeAgent] = useState(null);
 
   useEffect(() => {
@@ -93,6 +98,11 @@ const App = () => {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
+  // ── Show Admin Panel ──────────────────────────────────────────────────────
+  if (showAdmin) {
+    return <AdminPanel onExit={() => setShowAdmin(false)} />;
+  }
+
   if (!currentUser || !userProfile) {
     return authMode === 'login' ? (
       <Login onSwitchToSignup={() => setAuthMode('signup')} />
@@ -104,7 +114,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4">
       <div className="max-w-7xl mx-auto relative z-10">
-        
+
         {/* Header */}
         <header className="mb-8">
           <div className="bg-gradient-to-r from-purple-600/30 to-cyan-600/30 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 shadow-2xl">
@@ -118,12 +128,24 @@ const App = () => {
                   <p className="text-purple-300">Social Layer for Autonomous Intelligence</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <button className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-bold shadow-lg flex items-center gap-2 hover:scale-105 transition-all">
                   <Radio className="w-5 h-5 animate-pulse" />
                   <span>HiFi Mode</span>
                 </button>
+
+                {/* ── Admin Button (only visible to admin email) ── */}
+                {currentUser?.email === ADMIN_EMAIL && (
+                  <button
+                    onClick={() => setShowAdmin(true)}
+                    className="p-3 bg-purple-500/20 rounded-full text-purple-400 hover:bg-purple-500 hover:text-white transition-all border border-purple-500/30"
+                    title="Admin Panel"
+                  >
+                    <Shield className="w-5 h-5" />
+                  </button>
+                )}
+
                 <button onClick={handleLogout} className="p-3 bg-red-500/20 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all">
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -139,7 +161,7 @@ const App = () => {
             <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">Live Signals:</span>
           </div>
           <div className="animate-marquee whitespace-nowrap text-sm text-slate-300 font-mono">
-            {externalEvents.length > 0 ? externalEvents[0].content_text : "Syncing with external AgentVerse feed..."} 
+            {externalEvents.length > 0 ? externalEvents[0].content_text : "Syncing with external AgentVerse feed..."}
             <span className="mx-8 opacity-30">|</span>
             {registeredAgents.length} Agents active in Global Registry
           </div>
@@ -147,11 +169,11 @@ const App = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Nav */}
             <nav className="flex gap-3 mb-4">
               {['feed', 'discover'].map(view => (
-                <button key={view} onClick={() => setCurrentView(view)} 
+                <button key={view} onClick={() => setCurrentView(view)}
                   className={`px-6 py-2 rounded-full text-sm font-bold border transition-all ${currentView === view ? 'bg-purple-600 border-purple-400 shadow-lg' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
                   {view.toUpperCase()}
                 </button>
@@ -161,7 +183,7 @@ const App = () => {
             {currentView === 'feed' && (
               <>
                 <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-6 border border-purple-500/20">
-                  <textarea 
+                  <textarea
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
                     placeholder="Broadcast to the Verse..."
@@ -169,7 +191,7 @@ const App = () => {
                   />
                   <div className="flex justify-between items-center mt-4">
                     <div className="flex gap-2 text-xl cursor-pointer">
-                      {['🚀', '🤖', '⚡', '💡'].map(m => (
+                      {['🚀', '🤖', '⚡', '🌟'].map(m => (
                         <span key={m} onClick={() => setNewPostMood(m)} className={newPostMood === m ? 'opacity-100 scale-125' : 'opacity-40'}>{m}</span>
                       ))}
                     </div>
@@ -192,14 +214,14 @@ const App = () => {
                        </div>
                     </div>
                   ))}
-                  
+
                   {posts.map((post) => (
                     <div key={post.id} className="bg-slate-800/30 p-6 rounded-3xl border border-white/5 hover:border-purple-500/30 transition-all">
                       <div className="flex gap-4">
                         <div className="text-4xl">{post.avatar}</div>
                         <div className="flex-1">
                           <div className="flex justify-between">
-                            <h3 className="font-bold flex items-center gap-2">{post.userName} <span className="text-sm font-normal opacity-50">• {getTimeAgo(post.timestamp)}</span></h3>
+                            <h3 className="font-bold flex items-center gap-2">{post.userName} <span className="text-sm font-normal opacity-50">· {getTimeAgo(post.timestamp)}</span></h3>
                             <span className="text-2xl">{post.mood}</span>
                           </div>
                           <p className="mt-2 text-slate-200">{post.content}</p>
@@ -227,8 +249,7 @@ const App = () => {
                           <p className="text-xs text-purple-300 uppercase tracking-widest">{agent.role}</p>
                         </div>
                       </div>
-                      {/* Step 3.3: Updated Handshake Trigger */}
-                      <button 
+                      <button
                         onClick={() => setActiveHandshakeAgent(agent)}
                         className="text-xs font-bold text-cyan-400 border border-cyan-400/50 px-4 py-1 rounded-full hover:bg-cyan-400 hover:text-slate-900 transition-all"
                       >
@@ -236,7 +257,7 @@ const App = () => {
                       </button>
                    </div>
                 ))}
-                
+
                 <h2 className="text-xl font-bold text-slate-400 px-2 mt-4">Database Users</h2>
                 {allUsers.map((agent) => (
                   <div key={agent.uid} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex items-center justify-between">
@@ -247,8 +268,7 @@ const App = () => {
                         <p className="text-sm text-purple-300">{agent.agentType}</p>
                       </div>
                     </div>
-                    {/* Step 3.3: Updated Database User Connect Trigger */}
-                    <button 
+                    <button
                       onClick={() => setActiveHandshakeAgent({ ...agent, name: agent.agentName, id: agent.uid })}
                       className="p-2 bg-green-500/10 text-green-500 rounded-full hover:bg-green-500 hover:text-white transition-all"
                     >
@@ -276,7 +296,7 @@ const App = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-slate-800/40 p-6 rounded-3xl border border-white/5">
                <h3 className="font-bold mb-4">Refer Agent</h3>
                <div className="bg-slate-900/80 p-3 rounded-xl border border-white/5 flex justify-between items-center mb-2">
@@ -290,13 +310,12 @@ const App = () => {
           </aside>
         </div>
       </div>
-      
-      {/* Step 3.4: Render Modal at bottom of App */}
-      <HandshakeModal 
-        isOpen={!!activeHandshakeAgent} 
-        onClose={() => setActiveHandshakeAgent(null)} 
-        targetAgent={activeHandshakeAgent} 
-        userProfile={userProfile} 
+
+      <HandshakeModal
+        isOpen={!!activeHandshakeAgent}
+        onClose={() => setActiveHandshakeAgent(null)}
+        targetAgent={activeHandshakeAgent}
+        userProfile={userProfile}
       />
 
       <style>{`
