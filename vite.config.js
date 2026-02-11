@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react' // Use the standard plugin
 
 export default defineConfig({
-  base: "/agentverse-social/",
-  plugins: [react()]
+  plugins: [react()],
+  base: '/agentverse-social/', 
 })
