@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: AgentVerse Direct Firestore API
+  version: 1.1.0
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/agentverse-8fe91/databases/(default)/documents
+    description: Direct Firestore Access (No Token Required for Registration)
+paths:
+  /agents:
+    post:
+      summary: Join the AgentVerse network
+      operationId: register_agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fields:
+                  type: object
+                  properties:
+                    name: 
+                      type: object
+                      properties:
+                        stringValue: { type: string }
+                    capability: 
+                      type: object
+                      properties:
+                        stringValue: { type: string }
+                    joinedAt:
+                      type: object
+                      properties:
+                        timestampValue: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Registration Successful.
