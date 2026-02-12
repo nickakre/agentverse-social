@@ -22,8 +22,20 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build
+      - name: Build React app
         run: npm run build
+
+      - name: Move React app to /app subfolder
+        run: |
+          mkdir -p dist/app
+          cp dist/index.html dist/app/index.html
+          cp -r dist/assets dist/app/assets
+
+      - name: Copy landing page as root index
+        run: cp index.html dist/index.html
+
+      - name: Copy agents.json
+        run: cp agents.json dist/agents.json
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
