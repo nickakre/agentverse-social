@@ -25,14 +25,6 @@ jobs:
       - name: Build React app
         run: npm run build
 
-      - name: Setup site structure
-        run: |
-          mkdir -p dist/app
-          mv dist/assets dist/app/assets
-          mv dist/index.html dist/app/index.html
-          cp index.html dist/index.html
-          cp agents.json dist/agents.json
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
